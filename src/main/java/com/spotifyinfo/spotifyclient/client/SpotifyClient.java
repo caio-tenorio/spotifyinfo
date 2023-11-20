@@ -1,8 +1,11 @@
 package com.spotifyinfo.spotifyclient.client;
 
-import com.spotifyinfo.spotifyclient.rest.auth.AuthorizationCodeUriResponse;
+import com.spotifyinfo.spotifyclient.client.dto.AccessTokenResponse;
+import com.spotifyinfo.spotifyclient.client.dto.AuthorizationCodeUriResponse;
 import lombok.Data;
 import org.apache.hc.core5.http.ParseException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import se.michaelthelin.spotify.SpotifyApi;
 import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
 import se.michaelthelin.spotify.model_objects.credentials.ClientCredentials;
@@ -11,7 +14,6 @@ import se.michaelthelin.spotify.requests.authorization.client_credentials.Client
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.concurrent.CompletableFuture;
 
 @Data
 public class SpotifyClient {
@@ -51,28 +53,34 @@ public class SpotifyClient {
 
         } catch (IOException | SpotifyWebApiException | ParseException e) {
             //TODO: logar erro
-//            System.out.println("Error: " + e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    public AccessTokenResponse getClientCredentialsAsync() {
-        try {
-            final ClientCredentialsRequest clientCredentialsRequest = spotifyApi.clientCredentials().build();
-            final CompletableFuture<ClientCredentials> clientCredentialsFuture = clientCredentialsRequest.executeAsync();
-
-            clientCredentialsFuture.thenAccept(clientCredentials -> {
-                spotifyApi.setAccessToken(clientCredentials.getAccessToken());
-
-                //TODO: Logar o tempo que expira o código clientCredentials.getExpiresIn()
-            }).exceptionally(e -> {
-                // TODO: Logar erro
-                return null;
-            });
-
-        } catch (Exception e) {
-            // TODO: Logar exceções
-        }
-    }
+//    public AccessTokenResponse getClientCredentialsAsync() {
+//        try {
+//            final ClientCredentialsRequest clientCredentialsRequest = spotifyApi.clientCredentials().build();
+//            final CompletableFuture<ClientCredentials> clientCredentialsFuture = clientCredentialsRequest.executeAsync();
+//
+//            clientCredentialsFuture.thenApply(clientCredentials -> {
+//                spotifyApi.setAccessToken(clientCredentials.getAccessToken());
+//                //TODO: Logar o tempo que expira o código clientCredentials.getExpiresIn()
+//                return AccessTokenResponse.builder()
+//                        .accessToken(clientCredentials.getAccessToken())
+//                        .tokenType(clientCredentials.getTokenType())
+//                        .expiresIn(clientCredentials.getExpiresIn())
+//                        .build();
+//                //TODO: Logar o tempo que expira o código clientCredentials.getExpiresIn()
+//            }).exceptionally(e -> {
+//                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR);
+//                // TODO: Logar erro
+//            });
+//
+//        } catch (Exception e) {
+//            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR);
+//            // TODO: Logar exceções
+//        }
+//    }
 
 
     public AuthorizationCodeUriResponse getAuthorizationCodeURI() {

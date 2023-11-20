@@ -1,10 +1,9 @@
 package com.spotifyinfo.spotifyclient.rest.auth;
 
+import com.spotifyinfo.spotifyclient.client.dto.AccessTokenResponse;
+import com.spotifyinfo.spotifyclient.client.dto.AuthorizationCodeUriResponse;
 import lombok.AllArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController()
 @RequestMapping("/v1/auth")
@@ -13,7 +12,12 @@ public class AuthController {
     private final AuthService authService;
 
     @GetMapping("/authentication-url")
-    public AuthorizationCodeUriResponse getAuthorizationURI(@PathVariable String clientId, String clientSecret) {
+    public AuthorizationCodeUriResponse getAuthorizationURI(@RequestParam String clientId, @RequestParam String clientSecret) {
         return authService.getAuthorizationURI(clientId, clientSecret);
+    };
+
+    @GetMapping("/client-credentials")
+    public AccessTokenResponse getClientCredentials(@RequestParam String clientId, @RequestParam String clientSecret) {
+        return authService.getClientCredentials(clientId, clientSecret);
     };
 }

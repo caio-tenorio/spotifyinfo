@@ -1,4 +1,4 @@
-package com.spotifyinfo.spotifyclient.client;
+package com.spotifyinfo.spotifyclient.client.dto;
 
 import lombok.Builder;
 import lombok.Data;
