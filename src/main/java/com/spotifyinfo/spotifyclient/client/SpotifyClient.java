@@ -4,7 +4,6 @@ import com.spotifyinfo.spotifyclient.rest.auth.AuthorizationCodeUriResponse;
 import lombok.Data;
 import org.apache.hc.core5.http.ParseException;
 import se.michaelthelin.spotify.SpotifyApi;
-import se.michaelthelin.spotify.SpotifyHttpManager;
 import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
 import se.michaelthelin.spotify.model_objects.credentials.ClientCredentials;
 import se.michaelthelin.spotify.requests.authorization.authorization_code.AuthorizationCodeUriRequest;
@@ -26,8 +25,7 @@ public class SpotifyClient {
     public SpotifyClient(SpotifyClientConfig config) {
         this.clientId = config.getClientId();
         this.clientSecret = config.getClientSecret();
-//        this.redirectUri = config.getRedirectUri();
-        this.redirectUri = SpotifyHttpManager.makeUri("http://localhost:8888/callback");
+        this.redirectUri = config.getRedirectUri();
 
         this.spotifyApi = new SpotifyApi.Builder()
                 .setClientId(clientId)
@@ -35,23 +33,29 @@ public class SpotifyClient {
                 .setRedirectUri(redirectUri)
                 .build();
     }
-    public void clientCredentials_Sync() {
+    public AccessTokenResponse getClientCredentials() {
         try {
             final ClientCredentialsRequest clientCredentialsRequest = spotifyApi.clientCredentials().build();
             final ClientCredentials clientCredentials = clientCredentialsRequest.execute();
 
             // Set access token for further "spotifyApi" object usage
             spotifyApi.setAccessToken(clientCredentials.getAccessToken());
-
             //TODO: logar tempo que expira
 //            System.out.println("Expires in: " + clientCredentials.getExpiresIn());
+
+            return AccessTokenResponse.builder()
+                    .accessToken(clientCredentials.getAccessToken())
+                    .tokenType(clientCredentials.getTokenType())
+                    .expiresIn(clientCredentials.getExpiresIn())
+                    .build();
+
         } catch (IOException | SpotifyWebApiException | ParseException e) {
             //TODO: logar erro
 //            System.out.println("Error: " + e.getMessage());
         }
     }
 
-    public void clientCredentials_Async() {
+    public AccessTokenResponse getClientCredentialsAsync() {
         try {
             final ClientCredentialsRequest clientCredentialsRequest = spotifyApi.clientCredentials().build();
             final CompletableFuture<ClientCredentials> clientCredentialsFuture = clientCredentialsRequest.executeAsync();
