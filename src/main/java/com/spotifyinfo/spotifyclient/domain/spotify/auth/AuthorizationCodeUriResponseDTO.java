@@ -1,4 +1,4 @@
-package com.spotifyinfo.spotifyclient.client.dto;
+package com.spotifyinfo.spotifyclient.domain.spotify.auth;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,6 +9,6 @@ import java.net.URI;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class AuthorizationCodeUriResponse {
+public class AuthorizationCodeUriResponseDTO {
     private URI uri;
 }

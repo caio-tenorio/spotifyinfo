@@ -1,7 +1,7 @@
-package com.spotifyinfo.spotifyclient.rest.auth;
+package com.spotifyinfo.spotifyclient.services;
 
-import com.spotifyinfo.spotifyclient.client.dto.AccessTokenResponse;
-import com.spotifyinfo.spotifyclient.client.dto.AuthorizationCodeUriResponse;
+import com.spotifyinfo.spotifyclient.domain.spotify.auth.AccessTokenResponseDTO;
+import com.spotifyinfo.spotifyclient.domain.spotify.auth.AuthorizationCodeUriResponseDTO;
 import com.spotifyinfo.spotifyclient.client.SpotifyClient;
 import com.spotifyinfo.spotifyclient.client.SpotifyClientConfig;
 import lombok.AllArgsConstructor;
@@ -14,7 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 @AllArgsConstructor
 public class AuthService {
 
-    public AuthorizationCodeUriResponse getAuthorizationURI(String clientId, String clientSecret) {
+    public AuthorizationCodeUriResponseDTO getAuthorizationURI(String clientId, String clientSecret) {
         validateRequest(clientId, clientSecret);
 
         SpotifyClientConfig config = new SpotifyClientConfig();
@@ -25,7 +25,7 @@ public class AuthService {
         return spotifyClient.getAuthorizationCodeURI();
     }
 
-    public AccessTokenResponse getClientCredentials(String clientId, String clientSecret) {
+    public AccessTokenResponseDTO getClientCredentials(String clientId, String clientSecret) {
         validateRequest(clientId, clientSecret);
         SpotifyClient spotifyClient = createClientInstance(clientId, clientSecret);
         return spotifyClient.getClientCredentials();
