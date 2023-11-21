@@ -1,11 +1,11 @@
-package com.spotifyinfo.spotifyclient.client.dto;
+package com.spotifyinfo.spotifyclient.domain.spotify.auth;
 
 import lombok.Builder;
 import lombok.Data;
 
 @Data
 @Builder
-public class AccessTokenResponse {
+public class AccessTokenResponseDTO {
     private String accessToken;
     private String tokenType;
     private Integer expiresIn;
