@@ -1,4 +1,4 @@
-package com.spotifyinfo.spotifyclient.domain.spotify.auth;
+package com.spotifyinfo.domain;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
