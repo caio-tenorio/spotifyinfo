@@ -13,22 +13,17 @@ public class SpotifyAuthController {
     private final SpotifyAuthService authService;
 
     @GetMapping("/authorization-uri")
-    public AuthorizationCodeUriResponseDTO getAuthorizationURI(@RequestParam(required = false) String clientId,
-                                                               @RequestParam(required = false) String clientSecret,
-                                                               @RequestParam(required = false) String redirectUri) {
-        return authService.getAuthorizationURI(clientId, clientSecret, redirectUri);
+    public AuthorizationCodeUriResponseDTO getAuthorizationURI() {
+        return authService.getAuthorizationURI();
     };
 
     @GetMapping("/authorization-token")
-    public AccessTokenResponseDTO getAuthorizationToken(@RequestParam String code,
-                                                        @RequestParam(required = false) String clientId,
-                                                        @RequestParam(required = false) String clientSecret,
-                                                        @RequestParam(required = false) String redirectUri) {
-        return authService.getAuthorizationCode(code, clientId, clientSecret, redirectUri);
+    public AccessTokenResponseDTO getAuthorizationToken(@RequestParam String code) {
+        return authService.getAuthorizationCode(code);
     };
 
     @GetMapping("/client-credentials")
-    public AccessTokenResponseDTO getClientCredentials(@RequestParam String clientId, @RequestParam String clientSecret) {
-        return authService.getClientCredentials(clientId, clientSecret);
+    public AccessTokenResponseDTO getClientCredentials() {
+        return authService.getClientCredentials();
     };
 }

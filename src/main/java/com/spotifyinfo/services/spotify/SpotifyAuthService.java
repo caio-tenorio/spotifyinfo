@@ -4,7 +4,7 @@ import com.spotifyinfo.client.SpotifyClient;
 import com.spotifyinfo.client.SpotifyClientConfig;
 import com.spotifyinfo.domain.AccessTokenResponseDTO;
 import com.spotifyinfo.domain.AuthorizationCodeUriResponseDTO;
-import com.spotifyinfo.enums.AttrType;
+import jakarta.annotation.PostConstruct;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -17,68 +17,53 @@ import java.net.URI;
 public class SpotifyAuthService {
     @Value("${spotify.client-id}")
     private String clientId;
-    @Value("${spotify.redirect-uri}")
-    private String redirectUri;
     @Value("${spotify.client-secret}")
     private String clientSecret;
+    @Value("${spotify.redirect-uri}")
+    private String redirectUri;
 
-    public AuthorizationCodeUriResponseDTO getAuthorizationURI(String clientId, String clientSecret, String redirectUri) {
-        SpotifyClientConfig config = generateConfig(clientId, clientSecret, redirectUri);
-        SpotifyClient spotifyClient = new SpotifyClient(config);
-        return spotifyClient.getAuthorizationCodeURI();
+    @PostConstruct
+    private void init() {
+        if (StringUtils.isBlank(this.clientId)) {
+            throw new RuntimeException("Client id is not present in configuration!");
+        }
+
+        if (StringUtils.isBlank(this.clientSecret)) {
+            throw new RuntimeException("Client secret is not present in configuration!");
+        }
+
+        if (StringUtils.isBlank(this.redirectUri)) {
+            throw new RuntimeException("Redirect Uri is not present in configuration!");
+        }
     }
 
-    public AccessTokenResponseDTO getAuthorizationCode(String code, String clientId, String clientSecret, String redirectUri) {
-        SpotifyClientConfig spotifyClientConfig = generateConfig(clientId, clientSecret, redirectUri);
-
-        SpotifyClient spotifyClient = new SpotifyClient(spotifyClientConfig);
-        return spotifyClient.getAuthorizationCode(code);
+    public AuthorizationCodeUriResponseDTO getAuthorizationURI() {
+        return getSpotifyClient().getAuthorizationCodeURI();
     }
 
-    public AccessTokenResponseDTO getClientCredentials(String clientId, String clientSecret) {
-        SpotifyClient spotifyClient = createClientInstance(clientId, clientSecret);
-        return spotifyClient.getClientCredentials();
+    public AccessTokenResponseDTO getAuthorizationCode(String code) {
+        return getSpotifyClient().getAuthorizationCode(code);
     }
 
-    private SpotifyClient createClientInstance(String clientId, String clientSecret) {
+    public AccessTokenResponseDTO getClientCredentials() {
+        return getSpotifyClient().getClientCredentials();
+    }
+
+    private SpotifyClient getSpotifyClient() {
+        SpotifyClientConfig config = generateConfig();
+        return new SpotifyClient(config);
+    }
+
+    private SpotifyClientConfig generateConfig() {
         SpotifyClientConfig config = new SpotifyClientConfig();
         config.setClientId(clientId);
         config.setClientSecret(clientSecret);
 
-        return new SpotifyClient(config);
-    }
-
-    private SpotifyClientConfig generateConfig(String clientId, String clientSecret, String redirectUri) {
-        SpotifyClientConfig config = new SpotifyClientConfig();
-        config.setClientId(getValidValue(clientId, AttrType.CLIENT_ID));
-        config.setClientSecret(getValidValue(clientSecret, AttrType.CLIENT_SECRET));
-
         try {
-            config.setRedirectUri(new URI(getValidValue(redirectUri, AttrType.REDIRECT_URI)));
+            config.setRedirectUri(new URI(redirectUri));
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error creating URI! Is not a valid format!");
         }
         return config;
-    }
-
-    private String getValidValue(String attr, AttrType type) {
-        if (type == null) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Type can't be null!");
-        }
-
-        switch (type) {
-            case CLIENT_ID -> {
-                return StringUtils.isNotBlank(attr) ? attr : this.clientId;
-            }
-            case CLIENT_SECRET -> {
-                return StringUtils.isNotBlank(attr) ? attr : this.clientSecret;
-            }
-            case REDIRECT_URI -> {
-                return StringUtils.isNotBlank(attr) ? attr : this.redirectUri;
-            }
-            default -> {
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could no parse attribute type!");
-            }
-        }
     }
 }

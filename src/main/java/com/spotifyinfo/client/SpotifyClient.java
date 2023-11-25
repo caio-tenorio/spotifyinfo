@@ -5,6 +5,8 @@ import com.spotifyinfo.domain.AuthorizationCodeUriResponseDTO;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hc.core5.http.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import se.michaelthelin.spotify.SpotifyApi;
@@ -26,6 +28,7 @@ import static com.spotifyinfo.constants.SpotifyPermissionsConstants.READ_PERMISS
 
 @Data
 public class SpotifyClient {
+    Logger logger = LoggerFactory.getLogger(SpotifyClient.class);
     private String clientId;
     private String clientSecret;
     private URI redirectUri;
@@ -58,12 +61,12 @@ public class SpotifyClient {
                 .build();
     }
 
+    //TODO: remover DTO do client
     public AccessTokenResponseDTO getClientCredentials() {
         try {
             final ClientCredentialsRequest clientCredentialsRequest = spotifyApi.clientCredentials().build();
             final ClientCredentials clientCredentials = clientCredentialsRequest.execute();
             spotifyApi.setAccessToken(clientCredentials.getAccessToken());
-            //TODO: logar tempo que expira
             return AccessTokenResponseDTO.builder()
                     .accessToken(clientCredentials.getAccessToken())
                     .tokenType(clientCredentials.getTokenType())
@@ -71,7 +74,6 @@ public class SpotifyClient {
                     .build();
 
         } catch (IOException | SpotifyWebApiException | ParseException e) {
-            //TODO: logar erro
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -79,20 +81,19 @@ public class SpotifyClient {
     //TODO: remover DTO do client
     public AuthorizationCodeUriResponseDTO getAuthorizationCodeURI() {
         try {
-            //TODO: Add more permissions and move these to an appropriate place
             AuthorizationCodeUriRequest authorizationCodeUriRequest = spotifyApi.authorizationCodeUri()
                     .scope(READ_PERMISSIONS).build();
             URI uri = authorizationCodeUriRequest.execute();
 
             if (uri == null) {
-                throw new RuntimeException("The returned URI is null!");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The returned URI is null!");
             }
 
+            logger.info("Return authorization code URI " + uri);
+
             return new AuthorizationCodeUriResponseDTO(uri);
-        } catch(RuntimeException e) {
-            throw new RuntimeException(e.getMessage());
-            //        System.out.println("URI gerada: " + uri.toString());
-            //TODO: Logger
+        } catch(Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
@@ -107,7 +108,7 @@ public class SpotifyClient {
             spotifyApi.setRefreshToken(authorizationCodeCredentials.getRefreshToken());
 
 
-            System.out.println("Expires in: " + authorizationCodeCredentials.getExpiresIn());
+            logger.info("Expires in: " + authorizationCodeCredentials.getExpiresIn());
             return AccessTokenResponseDTO.builder()
                     .accessToken(authorizationCodeCredentials.getAccessToken())
                     .refreshToken(authorizationCodeCredentials.getRefreshToken())
@@ -115,7 +116,7 @@ public class SpotifyClient {
                     .tokenType(authorizationCodeCredentials.getTokenType())
                     .build();
         } catch (IOException | ParseException | SpotifyWebApiException e) {
-            System.out.println("Error: " + e.getMessage());
+            logger.error(e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
@@ -126,12 +127,12 @@ public class SpotifyClient {
                     .getListOfCurrentUsersPlaylists()
                     .build();
 
-            //TODO: Logger
-//            System.out.println("Total: " + getListOfCurrentUsersPlaylistsRequest.execute().getTotal());
-            return getListOfCurrentUsersPlaylistsRequest.execute();
+            Paging<PlaylistSimplified> paging = getListOfCurrentUsersPlaylistsRequest.execute();
+            logger.info("Returned: " + paging.getTotal());
+            return paging;
         } catch (IOException | SpotifyWebApiException | ParseException e) {
-            System.out.println("Error: " + e.getMessage());
-            throw new RuntimeException(e.getMessage());
+            logger.error(e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 }
