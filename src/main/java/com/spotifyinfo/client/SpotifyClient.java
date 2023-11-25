@@ -82,7 +82,8 @@ public class SpotifyClient {
     public AuthorizationCodeUriResponseDTO getAuthorizationCodeURI() {
         try {
             AuthorizationCodeUriRequest authorizationCodeUriRequest = spotifyApi.authorizationCodeUri()
-                    .scope(READ_PERMISSIONS).build();
+                    .scope(READ_PERMISSIONS)
+                    .build();
             URI uri = authorizationCodeUriRequest.execute();
 
             if (uri == null) {
