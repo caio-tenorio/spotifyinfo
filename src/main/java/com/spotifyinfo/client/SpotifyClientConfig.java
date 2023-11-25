@@ -1,4 +1,4 @@
-package com.spotifyinfo.spotifyclient.client;
+package com.spotifyinfo.client;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
