@@ -1,12 +1,11 @@
 package com.spotifyinfo.enums;
 
-import lombok.Getter;
-import se.michaelthelin.spotify.enums.ModelObjectType;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 
 import java.util.HashMap;
 import java.util.Map;
 
-@Getter
 public enum SpotifyObjectType {
     ALBUM("album"),
     ARTIST("artist"),
@@ -18,11 +17,11 @@ public enum SpotifyObjectType {
     TRACK("track"),
     USER("user");
 
-    private static final Map<String, ModelObjectType> map = new HashMap<>();
+    private static final Map<String, SpotifyObjectType> map = new HashMap<>();
 
     static {
-        for (ModelObjectType modelObjectType : ModelObjectType.values()) {
-            map.put(modelObjectType.type, modelObjectType);
+        for (SpotifyObjectType modelObjectType : SpotifyObjectType.values()) {
+            map.put(modelObjectType.type.toLowerCase(), modelObjectType);
         }
     }
 
@@ -32,7 +31,13 @@ public enum SpotifyObjectType {
         this.type = type;
     }
 
-    public static ModelObjectType keyOf(String type) {
-        return map.get(type);
+    @JsonCreator
+    public static SpotifyObjectType keyOf(String type) {
+        return map.get(type.toLowerCase());
+    }
+
+    @JsonValue
+    public String getType() {
+        return type;
     }
 }

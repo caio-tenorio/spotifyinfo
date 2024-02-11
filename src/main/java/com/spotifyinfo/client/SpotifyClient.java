@@ -1,138 +1,156 @@
 package com.spotifyinfo.client;
 
-import com.spotifyinfo.domain.AccessTokenResponseDTO;
-import com.spotifyinfo.domain.AuthorizationCodeUriResponseDTO;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.spotifyinfo.domain.*;
+import com.spotifyinfo.utils.JsonConverterUtil;
+import jakarta.annotation.PostConstruct;
 import lombok.Data;
+import okhttp3.HttpUrl;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.hc.core5.http.ParseException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
-import se.michaelthelin.spotify.SpotifyApi;
-import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
-import se.michaelthelin.spotify.model_objects.credentials.AuthorizationCodeCredentials;
-import se.michaelthelin.spotify.model_objects.credentials.ClientCredentials;
-import se.michaelthelin.spotify.model_objects.specification.Paging;
-import se.michaelthelin.spotify.model_objects.specification.PlaylistSimplified;
-import se.michaelthelin.spotify.requests.authorization.authorization_code.AuthorizationCodeRequest;
-import se.michaelthelin.spotify.requests.authorization.authorization_code.AuthorizationCodeUriRequest;
-import se.michaelthelin.spotify.requests.authorization.client_credentials.ClientCredentialsRequest;
-import se.michaelthelin.spotify.requests.data.playlists.GetListOfCurrentUsersPlaylistsRequest;
 
-import java.io.IOException;
 import java.net.URI;
-import java.util.Objects;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
 import static com.spotifyinfo.constants.SpotifyPermissionsConstants.READ_PERMISSIONS;
 
 @Data
+@Component
 public class SpotifyClient {
-    Logger logger = LoggerFactory.getLogger(SpotifyClient.class);
     private String clientId;
     private String clientSecret;
-    private URI redirectUri;
-    private SpotifyApi spotifyApi;
-    private String accessToken;
-    private String refreshToken;
+    private String redirectUri;
+    private String baseUrl;
+    private String authorizationBaseUrl;
+    private HttpClient httpClient;
 
-    public SpotifyClient(SpotifyClientConfig config) {
-        if (StringUtils.isNotBlank(config.getClientId())) {
-            this.clientId = config.getClientId();
-        }
-
-        if (StringUtils.isNotBlank(config.getClientSecret())) {
-            this.clientSecret = config.getClientSecret();
-        }
-
-        if (Objects.nonNull(config.getRedirectUri())) {
-            this.redirectUri = config.getRedirectUri();
-        }
-
-        this.accessToken = config.getAccessToken();
-        this.refreshToken = config.getRefreshToken();
-
-        this.spotifyApi = new SpotifyApi.Builder()
-                .setClientId(clientId)
-                .setClientSecret(clientSecret)
-                .setRedirectUri(redirectUri)
-                .setAccessToken(config.getAccessToken())
-                .setRefreshToken(config.getRefreshToken())
-                .build();
+    public SpotifyClient(
+            @Value("${spotify.client-id}") String clientId,
+            @Value("${spotify.client-secret}") String clientSecret,
+            @Value("${spotify.redirect-uri}") String redirectUri,
+            @Value("${spotify.base-url}") String baseUrl,
+            @Value("${spotify.authorization-base-url}") String authorizationBaseUrl) {
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+        this.redirectUri = redirectUri;
+        this.baseUrl = baseUrl;
+        this.authorizationBaseUrl = authorizationBaseUrl;
+        this.httpClient = new HttpClient();
     }
 
-    //TODO: remover DTO do client
-    public AccessTokenResponseDTO getClientCredentials() {
-        try {
-            final ClientCredentialsRequest clientCredentialsRequest = spotifyApi.clientCredentials().build();
-            final ClientCredentials clientCredentials = clientCredentialsRequest.execute();
-            spotifyApi.setAccessToken(clientCredentials.getAccessToken());
-            return AccessTokenResponseDTO.builder()
-                    .accessToken(clientCredentials.getAccessToken())
-                    .tokenType(clientCredentials.getTokenType())
-                    .expiresIn(clientCredentials.getExpiresIn())
-                    .build();
+    @PostConstruct
+    private void init() {
+        if (StringUtils.isBlank(this.clientId)) {
+            throw new RuntimeException("Client id is not present in configuration!");
+        }
 
-        } catch (IOException | SpotifyWebApiException | ParseException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR);
+        if (StringUtils.isBlank(this.clientSecret)) {
+            throw new RuntimeException("Client secret is not present in configuration!");
+        }
+
+        if (StringUtils.isBlank(this.redirectUri)) {
+            throw new RuntimeException("Redirect Uri is not present in configuration!");
         }
     }
 
-    //TODO: remover DTO do client
-    public AuthorizationCodeUriResponseDTO getAuthorizationCodeURI() {
-        try {
-            AuthorizationCodeUriRequest authorizationCodeUriRequest = spotifyApi.authorizationCodeUri()
-                    .scope(READ_PERMISSIONS).build();
-            URI uri = authorizationCodeUriRequest.execute();
+    public SpotifyAccessTokenResponse getClientCredentials() {
+        String url = this.authorizationBaseUrl + "/api/token";
+        String credentials = clientId + ":" + clientSecret;
 
-            if (uri == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The returned URI is null!");
-            }
+        String base64Credentials = Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+        SpotifyHeaders<String, String> headers = new SpotifyHeaders<>();
+        headers.put("Authorization", "Basic " + base64Credentials);
 
-            logger.info("Return authorization code URI " + uri);
+        Map<String, String> formBody = new HashMap<>();
+        formBody.put("grant_type", "client_credentials");
 
-            return new AuthorizationCodeUriResponseDTO(uri);
-        } catch(Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
-        }
+        String accessTokenResponse = this.httpClient.post(url, formBody, headers);
+        return JsonConverterUtil.jsonToObject(accessTokenResponse, SpotifyAccessTokenResponse.class);
     }
 
-    public AccessTokenResponseDTO getAuthorizationCode(String code) {
-        try {
-            AuthorizationCodeRequest authorizationCodeRequest = spotifyApi.authorizationCode(code)
-                    .build();
-            final AuthorizationCodeCredentials authorizationCodeCredentials = authorizationCodeRequest.execute();
+    public SpotifyAuthorizationCodeUriResponse getAuthorizationCodeURI() {
+        String url = this.authorizationBaseUrl + "/authorize";
+        Map<String, String> queryParams = new HashMap<>();
+        queryParams.put("response_type", "code");
+        queryParams.put("client_id", this.clientId);
+        queryParams.put("scope", READ_PERMISSIONS);
+        queryParams.put("redirect_uri", this.redirectUri);
 
-            // Set access and refresh token for further "spotifyApi" object usage
-            spotifyApi.setAccessToken(authorizationCodeCredentials.getAccessToken());
-            spotifyApi.setRefreshToken(authorizationCodeCredentials.getRefreshToken());
+        HttpUrl.Builder urlBuilder = HttpUrl.parse(url).newBuilder();
 
-
-            logger.info("Expires in: " + authorizationCodeCredentials.getExpiresIn());
-            return AccessTokenResponseDTO.builder()
-                    .accessToken(authorizationCodeCredentials.getAccessToken())
-                    .refreshToken(authorizationCodeCredentials.getRefreshToken())
-                    .expiresIn(authorizationCodeCredentials.getExpiresIn())
-                    .tokenType(authorizationCodeCredentials.getTokenType())
-                    .build();
-        } catch (IOException | ParseException | SpotifyWebApiException e) {
-            logger.error(e.getMessage());
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+        for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+            urlBuilder.addQueryParameter(entry.getKey(), entry.getValue());
         }
+
+        String uri = urlBuilder.build().toString();
+        SpotifyAuthorizationCodeUriResponse spotifyAuthorizationCodeUriResponse = new SpotifyAuthorizationCodeUriResponse();
+        try {
+            spotifyAuthorizationCodeUriResponse.setUri(new URI(uri));
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+        return spotifyAuthorizationCodeUriResponse;
     }
 
-    public Paging<PlaylistSimplified> getListOfCurrentUsersPlaylists() {
-        try {
-            GetListOfCurrentUsersPlaylistsRequest getListOfCurrentUsersPlaylistsRequest = spotifyApi
-                    .getListOfCurrentUsersPlaylists()
-                    .build();
+    public SpotifyAccessTokenResponse getAuthorizationCode(String code) {
+        String url = this.authorizationBaseUrl + "/api/token";
+        String credentials = clientId + ":" + clientSecret;
 
-            Paging<PlaylistSimplified> paging = getListOfCurrentUsersPlaylistsRequest.execute();
-            logger.info("Returned: " + paging.getTotal());
-            return paging;
-        } catch (IOException | SpotifyWebApiException | ParseException e) {
-            logger.error(e.getMessage());
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+        Map<String, String> formBody = new HashMap<>();
+        formBody.put("code", code);
+        formBody.put("redirect_uri", this.redirectUri);
+        formBody.put("grant_type", "authorization_code");
+
+        String base64Credentials = Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+        SpotifyHeaders<String, String> headers = new SpotifyHeaders<>();
+        headers.put("Authorization", "Basic " + base64Credentials);
+        headers.put("content-type", "application/x-www-form-urlencoded");
+
+        String authorizationCodeResponse = this.httpClient.post(url, formBody, headers);
+        return JsonConverterUtil.jsonToObject(authorizationCodeResponse, SpotifyAccessTokenResponse.class);
+    }
+
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    public SpotifyPaging<SpotifySimplifiedPlaylist> getListOfCurrentUsersPlaylists(String accessToken) {
+        if (StringUtils.isBlank(accessToken)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Access token can't be null");
         }
+        String url = this.baseUrl + "/v1/me/playlists";
+        SpotifyHeaders<String, String> headers = new SpotifyHeaders<>();
+        headers.put("Authorization", "Bearer " + accessToken);
+
+        String playlists = this.httpClient.get(url, null, headers);
+        if (StringUtils.isBlank(playlists)) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Playlists are null");
+        }
+
+        JSONObject jsonObject = new JSONObject(playlists);
+        JSONArray itemsArray = jsonObject.has("items") && Objects.nonNull(jsonObject.get("items")) ? jsonObject.getJSONArray("items") : null;
+        List<SpotifySimplifiedPlaylist> playlistList;
+
+        if (itemsArray == null) {
+            playlistList = new ArrayList<>();
+        } else {
+            playlistList = JsonConverterUtil.convertList(itemsArray.toString(), SpotifySimplifiedPlaylist.class);
+        }
+        SpotifyPaging<SpotifySimplifiedPlaylist> spotifySimplifiedPlaylistSpotifyPaging = new SpotifyPaging<>();
+
+        spotifySimplifiedPlaylistSpotifyPaging.setNext(jsonObject.has("next") && !jsonObject.isNull("next") ? jsonObject.getString("next") : null);
+        spotifySimplifiedPlaylistSpotifyPaging.setOffset(jsonObject.has("offset") && !jsonObject.isNull("offset") ? jsonObject.getInt("offset") : 0);
+        spotifySimplifiedPlaylistSpotifyPaging.setLimit(jsonObject.has("limit") && !jsonObject.isNull("limit") ? jsonObject.getInt("limit") : 0);
+        spotifySimplifiedPlaylistSpotifyPaging.setPrevious(jsonObject.has("previous") && !jsonObject.isNull("previous") ? jsonObject.getString("previous") : null);
+        spotifySimplifiedPlaylistSpotifyPaging.setHref(jsonObject.has("href") && !jsonObject.isNull("href") ? jsonObject.getString("href") : null);
+        spotifySimplifiedPlaylistSpotifyPaging.setTotal(jsonObject.has("total") && !jsonObject.isNull("total") ? jsonObject.getInt("total") : 0);
+        spotifySimplifiedPlaylistSpotifyPaging.setItems(playlistList.toArray(new SpotifySimplifiedPlaylist[]{}));
+
+        return spotifySimplifiedPlaylistSpotifyPaging;
     }
 }
