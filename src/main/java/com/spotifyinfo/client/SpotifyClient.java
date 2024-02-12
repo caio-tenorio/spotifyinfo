@@ -1,7 +1,10 @@
 package com.spotifyinfo.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.spotifyinfo.domain.*;
+import com.spotifyinfo.domain.SpotifyAccessTokenResponse;
+import com.spotifyinfo.domain.SpotifyAuthorizationCodeUriResponse;
+import com.spotifyinfo.domain.SpotifyPaging;
+import com.spotifyinfo.domain.SpotifySimplifiedPlaylist;
 import com.spotifyinfo.utils.JsonConverterUtil;
 import jakarta.annotation.PostConstruct;
 import lombok.Data;
