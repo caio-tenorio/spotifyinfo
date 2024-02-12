@@ -1,13 +1,11 @@
 package com.spotifyinfo.controllers;
 
 import com.spotifyinfo.domain.UserDTO;
-import com.spotifyinfo.domain.model.User;
 import com.spotifyinfo.services.UsersService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 @RestController()
 @RequestMapping("/v1/users")

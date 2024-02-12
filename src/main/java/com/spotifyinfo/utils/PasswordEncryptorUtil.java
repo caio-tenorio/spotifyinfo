@@ -1,6 +1,5 @@
 package com.spotifyinfo.utils;
 
-import com.spotifyinfo.interceptors.HttpInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
