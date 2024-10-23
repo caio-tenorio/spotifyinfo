@@ -5,10 +5,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 
 @SpringBootApplication()
-public class SpotifyclientApplication {
+public class SpotifyClientApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(SpotifyclientApplication.class, args);
+		SpringApplication.run(SpotifyClientApplication.class, args);
 	}
 
 }
